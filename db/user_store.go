@@ -12,7 +12,8 @@ const DBColl = "users"
 
 type UserStore interface {
 	GetUserByID(context.Context, string) (*types.User, error)
-	GetUsers(ctx context.Context) ([]*types.User, error)
+	GetUsers(context.Context) ([]*types.User, error)
+	InsertUser(context.Context, *types.User) (*types.User, error)
 }
 
 type MongoUserStore struct {
@@ -22,9 +23,17 @@ type MongoUserStore struct {
 
 func NewMongoUserStore(client *mongo.Client) *MongoUserStore {
 	return &MongoUserStore{
-		client: client,
-		coll:   client.Database(DBName).Collection(DBColl),
+		coll: client.Database(DBName).Collection(DBColl),
 	}
+}
+
+func (s *MongoUserStore) InsertUser(ctx context.Context, user *types.User) (*types.User, error) {
+	res, err := s.coll.InsertOne(ctx, &user)
+	if err != nil {
+		return nil, err
+	}
+	user.ID = res.InsertedID.(primitive.ObjectID)
+	return user, nil
 }
 
 func (s *MongoUserStore) GetUserByID(ctx context.Context, id string) (*types.User, error) {
@@ -41,19 +50,18 @@ func (s *MongoUserStore) GetUserByID(ctx context.Context, id string) (*types.Use
 }
 
 func (s *MongoUserStore) GetUsers(ctx context.Context) ([]*types.User, error) {
-	var users []*types.User
+
 	results, err := s.coll.Find(ctx, bson.M{})
 	if err != nil {
 		return []*types.User{}, err
 	}
-	defer results.Close(ctx)
-	for results.Next(ctx) {
-		var user types.User
-		err := results.Decode(&user)
-		if err != nil {
-			return nil, err
-		}
-		users = append(users, &user)
+	var users []*types.User
+	err = results.All(ctx, &users)
+	if err != nil {
+		return nil, err
+	}
+	if len(users) == 0 {
+		return []*types.User{}, nil
 	}
 	return users, nil
 }

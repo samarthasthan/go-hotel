@@ -10,6 +10,7 @@ import (
 	"log"
 )
 
+// these are dummy credentials use your own production credentails and store them in .env file
 const DBUri = "mongodb+srv://xinvo:xinvopassword@xinvodb.fzm3svb.mongodb.net/?retryWrites=true&w=majority"
 const DBName = "xinvodb"
 const DBColl = "users"
@@ -33,9 +34,11 @@ func main() {
 
 	// New fiber instance
 	app := fiber.New(config)
+	apiv1 := app.Group("/api/v1/")
 
-	app.Get("/user/:id", userHandler.HandleGetUser)
-	app.Get("/users", userHandler.HandleGetUsers)
+	apiv1.Post("/user", userHandler.HandlePostUser)
+	apiv1.Get("/user/:id", userHandler.HandleGetUser)
+	apiv1.Get("/users", userHandler.HandleGetUsers)
 
 	// Listen fiber routes
 	app.Listen(":8000")
